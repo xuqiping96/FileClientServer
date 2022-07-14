@@ -10,6 +10,7 @@
 #define BUF_SIZE 1024
 #define FILE_NAME_LEN 256
 #define ALLOW_ACCEPT "allow\n"
+#define FINISH "finish\n"
 
 char file_path[FILE_NAME_LEN];
 char file_name[FILE_NAME_LEN];
@@ -91,10 +92,13 @@ int send_control_message()
     int err;
     char *ptr;
     char control_message[BUF_SIZE];
+    int path_len;
 
     printf("Enter name: ");
     fgets(file_path, FILE_NAME_LEN, stdin);
-    
+    path_len = strlen(file_path);
+    file_path[path_len - 1] = '\0';
+
     file_read_fp = fopen(file_path, "rb");
     if(file_read_fp == NULL)
     {
@@ -133,9 +137,11 @@ void send_file_to_server()
     char file_data[BUF_SIZE];
     char control_message[BUF_SIZE];
     long nleft;
-    size_t nsent;
+    long total_sent;
+    long nsent;
 
     nleft = file_size_in_byte;
+    total_sent = 0;
     printf("Send file message start.\n");
     while(nleft != 0)
     {
@@ -149,13 +155,15 @@ void send_file_to_server()
 
         fread(file_data, sizeof(char), nsent, file_read_fp);
         fwrite(file_data, sizeof(char), nsent, sock_write_fp);
+        fflush(sock_write_fp);
 
         nleft -= nsent;
+        total_sent += nsent;
     }
 
-    printf("Send file message end, file name: %s, size: %ld Bytes.\n", file_name, file_size_in_byte);
+    printf("Send file message end, file name: %s, size: %ld Bytes.\n", file_name, total_sent);
     fgets(control_message, BUF_SIZE, sock_read_fp);
-    if(strcmp(control_message, "finish\n") == 0)
+    if(strcmp(control_message, FINISH) == 0)
     {
         printf("Receive control message from server, receive finish.\n");
     }
